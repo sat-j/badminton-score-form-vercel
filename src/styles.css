@@ -227,3 +227,58 @@ body {
 .status--error {
   color: var(--error);
 }
+
+.teams-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.team-box {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  backdrop-filter: blur(12px);
+}
+
+.team1 {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1));
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.team2 {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.team-header {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.team1 .team-header {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.team2 .team-header {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.score-input-large {
+  font-size: 18px !important;
+  font-weight: 600;
+  text-align: center;
+}
+
+.btn-primary:disabled {
+    opacity: 1;
+    box-shadow: none;
+    background: linear-gradient(135deg, #a0d8b4, #405e4b);
+}
