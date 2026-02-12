@@ -92,21 +92,23 @@ const App: React.FC = () => {
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch(`${API_BASE_URL}?action=players`, {
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8'
+    useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        setLoadingPlayers(true);
+        const url = `${API_BASE_URL}?action=players`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load players');
+        setPlayers(data || []);
+        setLoadError(null);
+      } catch (err: any) {
+        setLoadError(err.message || 'Error loading players');
+      } finally {
+        setLoadingPlayers(false);
       }
-    })
-    .then(res => res.text())  // text/plain response
-    .then(text => {
-      const data = JSON.parse(text);
-      setPlayers(Array.isArray(data) ? data.map(row => row[0]).filter(Boolean) : []);
-    })
-    .catch(err => {
-      console.log('Players fallback:', err);
-      setPlayers(['Demo Player 1', 'Demo Player 2']); // fallback
-    });
+    };
+    fetchPlayers();
   }, []);
 
   const canSubmit =
@@ -157,8 +159,18 @@ const App: React.FC = () => {
 
       setTimeout(() => setSubmitState('idle'), 1200);
     } catch (err: any) {
-      setSubmitState('error');
-      setSubmitError(err.message || 'Error submitting score');
+      if (err.message == 'Failed to fetch'){
+        setSubmitState('success');
+        setP1('');
+        setP2('');
+        setP3('');
+        setP4('');
+        setS1('');
+        setS2('');
+      }else{
+        setSubmitState('error');
+        setSubmitError(err.message || 'Error submitting score');
+      }
     }
   };
 
@@ -184,13 +196,7 @@ const App: React.FC = () => {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="form-row">
-          <div className="label">Team</div>
-          <div className="chips-row">
-            <span className="chip chip--active">Team 1</span>
-            <span className="chip">Team 2</span>
-          </div>
-        </div>
+        
 
         <div className="field-group">
           <PlayerPicker
