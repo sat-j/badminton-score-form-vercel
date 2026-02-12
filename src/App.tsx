@@ -22,8 +22,15 @@ const PlayerPicker: React.FC<PlayerPickerProps> = ({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    
     if (!q) return allPlayers.slice(0, 20);
-    return allPlayers.filter((p) => p.toLowerCase().includes(q)).slice(0, 20);
+
+    return allPlayers
+      .filter((p) => {
+        const name = String(p || '').trim().toLowerCase();
+        return name && name.includes(q);
+      })
+      .slice(0, 20);
   }, [query, allPlayers]);
 
   const display = value || query;
