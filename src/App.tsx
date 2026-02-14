@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
 
@@ -19,6 +19,17 @@ const PlayerPicker: React.FC<PlayerPickerProps> = ({
 }) => {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -34,9 +45,13 @@ const PlayerPicker: React.FC<PlayerPickerProps> = ({
   }, [query, allPlayers]);
 
   const display = value || query;
-
+  const clear = () => {
+    setQuery('');
+    onChange('');
+    setOpen(false);
+  };
   return (
-    <div className="form-row">
+    <div className="form-row"  ref={wrapperRef}>
       <div className="label">{label}</div>
       <div className="search-dropdown">
         <div className="input-shell">
@@ -55,6 +70,16 @@ const PlayerPicker: React.FC<PlayerPickerProps> = ({
             }}
           />
           <span className="input-tag">P</span>
+          {/* X CLEAR BUTTON */}
+          {display && (
+            <button
+              type="button"
+              className="input-clear"
+              onClick={clear}
+            >
+              ×
+            </button>
+          )}
         </div>
         {open && filtered.length > 0 && (
           <div className="search-list">

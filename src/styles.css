@@ -282,3 +282,36 @@ body {
     box-shadow: none;
     background: linear-gradient(135deg, #a0d8b4, #405e4b);
 }
+
+.input-shell {
+  position: relative;
+}
+
+.input-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(15, 23, 42, 0.9);
+  color: #64748b;
+  font-size: 14px;
+  line-height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-clear:hover {
+  background: rgba(30, 64, 175, 0.6);
+  color: #e2e8f0;
+}
+
+/* Remove old P pill if still present */
+.input-tag {
+  display: none;
+}
