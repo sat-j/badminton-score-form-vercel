@@ -44,6 +44,8 @@ const PlayerPicker: React.FC<PlayerPickerProps> = ({
       .slice(0, 20);
   }, [query, allPlayers]);
 
+
+
   const display = value || query;
   const clear = () => {
     setQuery('');
@@ -51,7 +53,7 @@ const PlayerPicker: React.FC<PlayerPickerProps> = ({
     setOpen(false);
   };
   return (
-    <div className="form-row"  ref={wrapperRef}>
+    <div className="form-row" ref={wrapperRef}>
       <div className="label">{label}</div>
       <div className="search-dropdown">
         <div className="input-shell">
@@ -112,6 +114,8 @@ const PlayerPicker: React.FC<PlayerPickerProps> = ({
 const App: React.FC = () => {
   const [players, setPlayers] = useState<string[]>([]);
   const [loadingPlayers, setLoadingPlayers] = useState<boolean>(true);
+  const [scores, setScores] = useState<any[]>([]);
+  const [loadingScores, setLoadingScores] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [p1, setP1] = useState('');
@@ -149,6 +153,29 @@ const App: React.FC = () => {
     fetchPlayers();
   }, []);
 
+  // Add this function (fetch scores)
+  const fetchScores = async () => {
+    setLoadingScores(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}?action=latestScores`, {
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      const text = await res.text();
+      const data = JSON.parse(text);
+      setScores(data.slice(1)); // Skip header row
+    } catch (err) {
+      console.log('Scores load error:', err);
+      setScores([]);
+    } finally {
+      setLoadingScores(false);
+    }
+  };
+
+  // Load scores on mount
+  useEffect(() => {
+    fetchScores();
+  }, []);
+
   const canSubmit =
     p1 && p2 && p3 && p4 &&
     s1 !== '' && s2 !== '' &&
@@ -180,12 +207,14 @@ const App: React.FC = () => {
 
       // IGNORE CORS - check if data saved by timing/response
       if (res.ok || res.status === 200) {
+        fetchScores();
         setSubmitState('success');
       } else {
         throw new Error('Submit failed');
       }
     } catch (err) {
       console.log('Submit error (CORS ok):', err); // Data still saves
+      fetchScores();
       setSubmitState('success'); // Assume success since sheet gets data
     } finally {
       // Reset form
@@ -280,6 +309,51 @@ const App: React.FC = () => {
           )}
         </div>
       </form>
+
+      {scores.length > 0 && (
+        <div className="scores-section">
+          <div className="section-header">
+            <h3>Latest Scores</h3>
+            <button
+              className="refresh-btn"
+              onClick={fetchScores}
+              disabled={loadingScores}
+            >
+              🔄 {loadingScores ? '...' : 'Refresh'}
+            </button>
+          </div>
+          <div className="table-container">
+            <table className="scores-table">
+              <thead>
+                <tr>
+                  <th>Team 1</th>
+                  <th>Team 2</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scores.slice(-10).reverse().map((row, index) => {
+                  const team1 = `${row[1] || ''} / ${row[2] || ''}`.trim();
+                  const team2 = `${row[3] || ''} / ${row[4] || ''}`.trim();
+                  const score1 = row[5] || 0;
+                  const score2 = row[6] || 0;
+                  const scoreText = `${score1} - ${score2}`;
+                  const team1Wins = score1 > score2;
+                  const team2Wins = score2 > score1;
+
+                  return (
+                    <tr key={index}>
+                      <td className={team1Wins ? 'winner' : ''}>{team1}</td>
+                      <td className={team2Wins ? 'winner' : ''}>{team2}</td>
+                      <td>{scoreText}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
