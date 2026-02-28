@@ -44,14 +44,13 @@ const PlayerPicker: React.FC<PlayerPickerProps> = ({
       .slice(0, 20);
   }, [query, allPlayers]);
 
-
-
   const display = value || query;
   const clear = () => {
     setQuery('');
     onChange('');
     setOpen(false);
   };
+
   return (
     <div className="form-row" ref={wrapperRef}>
       <div className="label">{label}</div>
@@ -72,7 +71,6 @@ const PlayerPicker: React.FC<PlayerPickerProps> = ({
             }}
           />
           <span className="input-tag">P</span>
-          {/* X CLEAR BUTTON */}
           {display && (
             <button
               type="button"
@@ -115,6 +113,7 @@ const App: React.FC = () => {
   const [players, setPlayers] = useState<string[]>([]);
   const [loadingPlayers, setLoadingPlayers] = useState<boolean>(true);
   const [scores, setScores] = useState<any[]>([]);
+  const [filteredScores, setFilteredScores] = useState<any[]>([]);
   const [loadingScores, setLoadingScores] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -128,9 +127,12 @@ const App: React.FC = () => {
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterToday, setFilterToday] = useState(true);
+
   const selectedPlayers = [p1, p2, p3, p4].filter(Boolean);
-  const availablePlayers = useMemo(() =>
-    players.filter(player => !selectedPlayers.includes(player)),
+  const availablePlayers = useMemo(
+    () => players.filter((player) => !selectedPlayers.includes(player)),
     [players, selectedPlayers]
   );
 
@@ -153,7 +155,34 @@ const App: React.FC = () => {
     fetchPlayers();
   }, []);
 
-  // Add this function (fetch scores)
+  const applyFilters = (rows: any[], opts?: { today?: boolean; query?: string }) => {
+    const todayFlag = opts?.today ?? filterToday;
+    const query = (opts?.query ?? searchQuery).trim().toLowerCase();
+
+    const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD" [web:4][web:5]
+
+    let out = rows;
+
+    if (todayFlag) {
+      out = out.filter((row) => {
+        const ts = row[0]; // timestamp column
+        if (!ts) return false;
+        const datePart = String(ts).slice(0, 10);
+        return datePart === todayStr;
+      });
+    }
+
+    if (query) {
+      out = out.filter((row) => {
+        const team1 = `${row[1] || ''} ${row[2] || ''}`.toLowerCase();
+        const team2 = `${row[3] || ''} ${row[4] || ''}`.toLowerCase();
+        return team1.includes(query) || team2.includes(query);
+      });
+    }
+
+    setFilteredScores(out);
+  };
+
   const fetchScores = async () => {
     setLoadingScores(true);
     try {
@@ -162,19 +191,27 @@ const App: React.FC = () => {
       });
       const text = await res.text();
       const data = JSON.parse(text);
-      setScores(data.slice(1)); // Skip header row
+      const rows = data.slice(1);
+      setScores(rows);
+      applyFilters(rows);
     } catch (err) {
       console.log('Scores load error:', err);
       setScores([]);
+      setFilteredScores([]);
     } finally {
       setLoadingScores(false);
     }
   };
 
-  // Load scores on mount
   useEffect(() => {
     fetchScores();
   }, []);
+
+  useEffect(() => {
+    if (scores.length) {
+      applyFilters(scores);
+    }
+  }, [scores, filterToday, searchQuery]);
 
   const canSubmit =
     p1 && p2 && p3 && p4 &&
@@ -183,11 +220,13 @@ const App: React.FC = () => {
     Number(s2) >= 0 &&
     Number(s1) <= 30 &&
     Number(s2) <= 30;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
 
     setSubmitState('submitting');
+    setSubmitError(null);
 
     try {
       const formData = new FormData();
@@ -199,25 +238,23 @@ const App: React.FC = () => {
       formData.append('score1', s1);
       formData.append('score2', s2);
 
-      // FormData = no Content-Type = no preflight
       const res = await fetch(API_BASE_URL, {
         method: 'POST',
         body: formData
       });
 
-      // IGNORE CORS - check if data saved by timing/response
       if (res.ok || res.status === 200) {
-        fetchScores();
+        await fetchScores();
         setSubmitState('success');
       } else {
         throw new Error('Submit failed');
       }
-    } catch (err) {
-      console.log('Submit error (CORS ok):', err); // Data still saves
-      fetchScores();
-      setSubmitState('success'); // Assume success since sheet gets data
+    } catch (err: any) {
+      console.log('Submit error (CORS ok):', err);
+      setSubmitState('error');
+      setSubmitError(err.message || 'Submit error');
+      await fetchScores();
     } finally {
-      // Reset form
       setP1(''); setP2(''); setP3(''); setP4('');
       setS1(''); setS2('');
       setTimeout(() => setSubmitState('idle'), 2000);
@@ -246,39 +283,57 @@ const App: React.FC = () => {
       )}
 
       <form onSubmit={handleSubmit}>
-
-
         <div className="teams-container">
-          {/* TEAM 1 - Green */}
           <div className="team-box team1">
             <div className="team-header">Team 1</div>
-            <PlayerPicker label="Player 1" value={p1} onChange={setP1} allPlayers={availablePlayers} />
-            <PlayerPicker label="Player 2" value={p2} onChange={setP2} allPlayers={availablePlayers} />
+            <PlayerPicker
+              label="Player 1"
+              value={p1}
+              onChange={setP1}
+              allPlayers={availablePlayers}
+            />
+            <PlayerPicker
+              label="Player 2"
+              value={p2}
+              onChange={setP2}
+              allPlayers={availablePlayers}
+            />
             <div className="score-input">
               <div className="label">Score</div>
               <input
                 className="input-base score-input-large"
                 type="number"
                 name="score1"
-                min="0" max="30"
+                min="0"
+                max="30"
                 value={s1}
                 onChange={(e) => setS1(e.target.value)}
               />
             </div>
           </div>
 
-          {/* TEAM 2 - Blue */}
           <div className="team-box team2">
             <div className="team-header">Team 2</div>
-            <PlayerPicker label="Player 3" value={p3} onChange={setP3} allPlayers={availablePlayers} />
-            <PlayerPicker label="Player 4" value={p4} onChange={setP4} allPlayers={availablePlayers} />
+            <PlayerPicker
+              label="Player 3"
+              value={p3}
+              onChange={setP3}
+              allPlayers={availablePlayers}
+            />
+            <PlayerPicker
+              label="Player 4"
+              value={p4}
+              onChange={setP4}
+              allPlayers={availablePlayers}
+            />
             <div className="score-input">
               <div className="label">Score</div>
               <input
                 className="input-base score-input-large"
                 type="number"
                 name="score2"
-                min="0" max="30"
+                min="0"
+                max="30"
                 value={s2}
                 onChange={(e) => setS2(e.target.value)}
               />
@@ -314,13 +369,37 @@ const App: React.FC = () => {
         <div className="scores-section">
           <div className="section-header">
             <h3>Latest Scores</h3>
-            <button
-              className="refresh-btn"
-              onClick={fetchScores}
-              disabled={loadingScores}
-            >
-              🔄 {loadingScores ? '...' : 'Refresh'}
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="text"
+                className="input-base"
+                placeholder="Search player"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button
+                className="btn-secondary"
+                type="button"
+                onClick={() => applyFilters(scores, { query: searchQuery })}
+              >
+                Search
+              </button>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={filterToday}
+                  onChange={(e) => setFilterToday(e.target.checked)}
+                />
+                Today only
+              </label>
+              <button
+                className="refresh-btn"
+                onClick={fetchScores}
+                disabled={loadingScores}
+              >
+                🔄 {loadingScores ? '...' : 'Refresh'}
+              </button>
+            </div>
           </div>
           <div className="table-container">
             <table className="scores-table">
@@ -332,7 +411,7 @@ const App: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {scores.slice(-10).reverse().map((row, index) => {
+                {filteredScores.slice(-10).reverse().map((row, index) => {
                   const team1 = `${row[1] || ''} / ${row[2] || ''}`.trim();
                   const team2 = `${row[3] || ''} / ${row[4] || ''}`.trim();
                   const score1 = row[5] || 0;
