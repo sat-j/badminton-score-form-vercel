@@ -412,7 +412,7 @@ const App: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredScores.slice(-10).reverse().map((row, index) => {
+                {filteredScores.slice(-150).reverse().map((row, index) => {
                   const team1 = `${row[1] || ''} / ${row[2] || ''}`.trim();
                   const team2 = `${row[3] || ''} / ${row[4] || ''}`.trim();
                   const score1 = row[5] || 0;
